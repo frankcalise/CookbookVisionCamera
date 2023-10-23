@@ -36,9 +36,9 @@ import { colors } from "app/theme"
  */
 export type AppStackParamList = {
   Welcome: undefined
-  Login: undefined // @demo remove-current-line
   Demo: NavigatorScreenParams<DemoTabParamList> // @demo remove-current-line
   // 🔥 Your screens go here
+  Codes: undefined
   // IGNITE_GENERATOR_ANCHOR_APP_STACK_PARAM_LIST
 }
 
@@ -57,32 +57,15 @@ export type AppStackScreenProps<T extends keyof AppStackParamList> = NativeStack
 const Stack = createNativeStackNavigator<AppStackParamList>()
 
 const AppStack = observer(function AppStack() {
-  // @demo remove-block-start
-  const {
-    authenticationStore: { isAuthenticated },
-  } = useStores()
-
   // @demo remove-block-end
   return (
     <Stack.Navigator
       screenOptions={{ headerShown: false, navigationBarColor: colors.background }}
-      initialRouteName={isAuthenticated ? "Welcome" : "Login"} // @demo remove-current-line
+      initialRouteName={"Welcome"} // @demo remove-current-line
     >
-      {/* @demo remove-block-start */}
-      {isAuthenticated ? (
-        <>
-          {/* @demo remove-block-end */}
-          <Stack.Screen name="Welcome" component={Screens.WelcomeScreen} />
-          {/* @demo remove-block-start */}
-          <Stack.Screen name="Demo" component={DemoNavigator} />
-        </>
-      ) : (
-        <>
-          <Stack.Screen name="Login" component={Screens.LoginScreen} />
-        </>
-      )}
-      {/* @demo remove-block-end */}
+      <Stack.Screen name="Welcome" component={Screens.WelcomeScreen} />
       {/** 🔥 Your screens go here */}
+      <Stack.Screen name="Codes" component={Screens.CodesScreen} />
       {/* IGNITE_GENERATOR_ANCHOR_APP_STACK_SCREENS */}
     </Stack.Navigator>
   )

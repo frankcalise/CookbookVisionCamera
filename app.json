@@ -17,9 +17,7 @@
       "fallbackToCacheTimeout": 0
     },
     "jsEngine": "hermes",
-    "assetBundlePatterns": [
-      "**/*"
-    ],
+    "assetBundlePatterns": ["**/*"],
     "android": {
       "icon": "./assets/images/app-icon-android-legacy.png",
       "package": "com.cookbookvisioncamera",
@@ -64,6 +62,12 @@
           "android": {
             "newArchEnabled": false
           }
+        }
+      ],
+      [
+        "react-native-vision-camera",
+        {
+          "cameraPermissionText": "$(PRODUCT_NAME) needs access to your Camera."
         }
       ]
     ],

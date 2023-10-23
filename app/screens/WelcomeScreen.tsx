@@ -1,113 +1,139 @@
 import { observer } from "mobx-react-lite"
 import React, { FC } from "react"
-import { Image, ImageStyle, TextStyle, View, ViewStyle } from "react-native"
-import {
-  Button, // @demo remove-current-line
-  Text,
-} from "app/components"
-import { isRTL } from "../i18n"
-import { useStores } from "../models" // @demo remove-current-line
 import { AppStackScreenProps } from "../navigators"
-import { colors, spacing } from "../theme"
-import { useHeader } from "../utils/useHeader" // @demo remove-current-line
-import { useSafeAreaInsetsStyle } from "../utils/useSafeAreaInsetsStyle"
-
-const welcomeLogo = require("../../assets/images/logo.png")
-const welcomeFace = require("../../assets/images/welcome-face.png")
+import {
+  Camera,
+  CameraPermissionStatus,
+  useCameraDevice,
+  useCodeScanner,
+} from "react-native-vision-camera"
+import { Alert, Linking, StyleSheet, View, ViewStyle } from "react-native"
+import { Button, Icon, Screen, Text } from "app/components"
+import { useSafeAreaInsets } from "react-native-safe-area-context"
+import { TouchableOpacity } from "react-native-gesture-handler"
+import { useStores } from "app/models"
+import { spacing } from "app/theme"
 
 interface WelcomeScreenProps extends AppStackScreenProps<"Welcome"> {}
 
-export const WelcomeScreen: FC<WelcomeScreenProps> = observer(function WelcomeScreen(
-  _props, // @demo remove-current-line
-) {
-  // @demo remove-block-start
-  const { navigation } = _props
-  const {
-    authenticationStore: { logout },
-  } = useStores()
+export const WelcomeScreen: FC<WelcomeScreenProps> = observer(function WelcomeScreen(_props) {
+  const [cameraPermission, setCameraPermission] = React.useState<CameraPermissionStatus>()
+  const [showScanner, setShowScanner] = React.useState(false)
+  const [isActive, setIsActive] = React.useState(false)
 
-  function goNext() {
-    navigation.navigate("Demo", { screen: "DemoShowroom", params: {} })
+  const { scanStore } = useStores()
+
+  React.useEffect(() => {
+    Camera.getCameraPermissionStatus().then(setCameraPermission)
+  }, [])
+
+  const promptForCameraPermissions = React.useCallback(async () => {
+    const permission = await Camera.requestCameraPermission()
+    Camera.getCameraPermissionStatus().then(setCameraPermission)
+
+    if (permission === "denied") await Linking.openSettings()
+  }, [cameraPermission])
+
+  const codeScanner = useCodeScanner({
+    codeTypes: ["qr", "ean-13"],
+    onCodeScanned: (codes) => {
+      setIsActive(false)
+
+      codes.every((code) => {
+        if (code.value) {
+          scanStore.addScan(code.value)
+        }
+        return true
+      })
+
+      setShowScanner(false)
+      Alert.alert("Code scanned!")
+    },
+  })
+
+  const device = useCameraDevice("back")
+
+  const { right, top } = useSafeAreaInsets()
+
+  if (cameraPermission == null) {
+    // still loading
+    return null
   }
 
-  useHeader(
-    {
-      rightTx: "common.logOut",
-      onRightPress: logout,
-    },
-    [logout],
-  )
-  // @demo remove-block-end
-
-  const $bottomContainerInsets = useSafeAreaInsetsStyle(["bottom"])
+  if (showScanner && device) {
+    return (
+      <View style={$cameraContainer}>
+        <Camera
+          isActive={isActive}
+          device={device}
+          codeScanner={codeScanner}
+          style={StyleSheet.absoluteFill}
+          photo
+          video
+          onInitialized={() => {
+            console.log("initialized")
+          }}
+        />
+        <View style={[$cameraButtons, { right: right + spacing.md, top: top + spacing.md }]}>
+          <TouchableOpacity style={$closeCamera} onPress={() => setShowScanner(false)}>
+            <Icon icon="x" size={50} />
+          </TouchableOpacity>
+        </View>
+      </View>
+    )
+  }
 
   return (
-    <View style={$container}>
-      <View style={$topContainer}>
-        <Image style={$welcomeLogo} source={welcomeLogo} resizeMode="contain" />
-        <Text
-          testID="welcome-heading"
-          style={$welcomeHeading}
-          tx="welcomeScreen.readyForLaunch"
-          preset="heading"
-        />
-        <Text tx="welcomeScreen.exciting" preset="subheading" />
-        <Image style={$welcomeFace} source={welcomeFace} resizeMode="contain" />
+    <Screen contentContainerStyle={$container}>
+      <View>
+        <Text>
+          Camera Permission: {cameraPermission === null ? "Loading..." : cameraPermission}
+        </Text>
+        {cameraPermission !== "granted" && (
+          <Button onPress={promptForCameraPermissions} text="Request Camera Permission" />
+        )}
       </View>
 
-      <View style={[$bottomContainer, $bottomContainerInsets]}>
-        <Text tx="welcomeScreen.postscript" size="md" />
-        {/* @demo remove-block-start */}
+      <View>
         <Button
-          testID="next-screen-button"
-          preset="reversed"
-          tx="welcomeScreen.letsGo"
-          onPress={goNext}
+          onPress={() => {
+            setIsActive(true)
+            setShowScanner(true)
+          }}
+          text="Scan Barcodes"
         />
-        {/* @demo remove-block-end */}
       </View>
-    </View>
+
+      <View>
+        <Button
+          onPress={() => _props.navigation.navigate("Codes")}
+          text={`View Scans (${scanStore.scans.length})`}
+        />
+      </View>
+    </Screen>
   )
 })
 
 const $container: ViewStyle = {
   flex: 1,
-  backgroundColor: colors.background,
+  padding: 20,
+  justifyContent: "space-evenly",
 }
 
-const $topContainer: ViewStyle = {
-  flexShrink: 1,
-  flexGrow: 1,
-  flexBasis: "57%",
-  justifyContent: "center",
-  paddingHorizontal: spacing.lg,
+const $cameraContainer: ViewStyle = {
+  flex: 1,
 }
 
-const $bottomContainer: ViewStyle = {
-  flexShrink: 1,
-  flexGrow: 0,
-  flexBasis: "43%",
-  backgroundColor: colors.palette.neutral100,
-  borderTopLeftRadius: 16,
-  borderTopRightRadius: 16,
-  paddingHorizontal: spacing.lg,
-  justifyContent: "space-around",
-}
-const $welcomeLogo: ImageStyle = {
-  height: 88,
-  width: "100%",
-  marginBottom: spacing.xxl,
-}
-
-const $welcomeFace: ImageStyle = {
-  height: 169,
-  width: 269,
+const $cameraButtons: ViewStyle = {
   position: "absolute",
-  bottom: -47,
-  right: -80,
-  transform: [{ scaleX: isRTL ? -1 : 1 }],
 }
 
-const $welcomeHeading: TextStyle = {
+const $closeCamera: ViewStyle = {
   marginBottom: spacing.md,
+  width: 100,
+  height: 100,
+  borderRadius: 100 / 2,
+  backgroundColor: "rgba(140, 140, 140, 0.3)",
+  justifyContent: "center",
+  alignItems: "center",
 }
